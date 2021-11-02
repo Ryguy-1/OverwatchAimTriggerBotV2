@@ -7,12 +7,12 @@ import pyautogui
 
 class TriggerBot:
 
-    def __init__(self, resolution = (1920, 1080)):
+    def __init__(self, resolution = (1920, 1080), snap_square_length = 3):
         self.x_res = resolution[0]
         self.y_res = resolution[1]
 
         # Snap Box Dimensions
-        self.snap_square_length = 3
+        self.snap_square_length = snap_square_length
         self.screen_resolution = {'top': round(self.y_res/2)-self.snap_square_length, 'left': round(self.x_res/2)-self.snap_square_length, 'width': self.snap_square_length*2, 'height': self.snap_square_length*2}
 
         # BGR Separators for Red
@@ -83,4 +83,4 @@ class TriggerBot:
                 if is_shoot:
                     self.shoot()
 
-            cv2.waitKey(20)
+            cv2.waitKey(1)
