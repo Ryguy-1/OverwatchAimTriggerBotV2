@@ -1,7 +1,7 @@
-from screen import ScreenViewer
+from screen import TriggerBot
 
 def main():
-    screen_viewer = ScreenViewer()
+    screen_viewer = TriggerBot()
 
 if __name__ == '__main__':
     main()

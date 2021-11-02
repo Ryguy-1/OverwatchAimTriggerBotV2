@@ -5,7 +5,7 @@ import numpy as np
 import mouse
 import pyautogui
 
-class ScreenViewer:
+class TriggerBot:
 
     def __init__(self, resolution = (1920, 1080)):
         self.x_res = resolution[0]
