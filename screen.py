@@ -35,9 +35,6 @@ class TriggerBot:
 
     def is_on_target(self, image):
         # See if the surrounding pixels are illuminated
-        cv2.imshow('Image', image)
-        cv2.waitKey(1)
-
         image = image.flatten()
         # Check if single pixel is illuminated
         if np.sum(image) > 0:
@@ -82,5 +79,3 @@ class TriggerBot:
                 # Burst
                 if is_shoot:
                     self.shoot()
-
-            cv2.waitKey(1)
