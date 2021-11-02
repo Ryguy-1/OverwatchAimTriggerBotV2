@@ -16,7 +16,7 @@ class TriggerBot:
         self.screen_resolution = {'top': round(self.y_res/2)-self.snap_square_length, 'left': round(self.x_res/2)-self.snap_square_length, 'width': self.snap_square_length*2, 'height': self.snap_square_length*2}
 
         # BGR Separators for Red
-        self.red_min = 190
+        self.red_min = 210
         self.red_max = 255
         
         self.green_max = 100
