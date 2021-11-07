@@ -1,8 +1,5 @@
 from numpy import character
 from screen import TriggerBot
-from character_identifier import GatherData
-from character_identifier import TrainModel
-from character_identifier import CharacterIdentifier
 import cv2
 import time
 from mss import mss
