@@ -200,7 +200,7 @@ class AmmoAnalyzer:
 
 class TriggerBot:
 
-    def __init__(self, resolution = (1920, 1080), snap_square_length = 3, fire_delay=0.5, mss=None):
+    def __init__(self, resolution = (1920, 1080), snap_square_length = 3, fire_delay=0.2, mss=None):
         self.x_res = resolution[0]
         self.y_res = resolution[1]
 
