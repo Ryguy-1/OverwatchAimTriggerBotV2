@@ -1,4 +1,3 @@
-# Imports
 from mss import mss
 import cv2
 import threading
@@ -6,19 +5,22 @@ import numpy as np
 import mouse
 import pyautogui
 import time
-import matplotlib as plt
-import glob
-from sklearn.linear_model import LogisticRegression
-import pickle
+# SkLearn
+import sklearn
 from sklearn.metrics import plot_confusion_matrix
-import matplotlib.pyplot as plt
-import numpy as np
-from PIL import ImageGrab
+from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import SGDClassifier
+from sklearn.svm import LinearSVC
+from sklearn.neural_network import MLPClassifier
+import glob
+import pickle
+# matplotlib 3.3.1
+from matplotlib import pyplot
 
-class Train:
-    def __init__(self, data_path = 'flashbang_frames/', model_path = 'flashbang_model.pkl', train_test_split = 0.8, max_each_class = 1300):
+class TrainModel:
+    def __init__(self, data_path = 'character_identifier_data/', train_test_split = 0.8, max_each_class = 3000):
         self.model = None
-        self.model_path = model_path
+        self.model_path = 'character_identifier.pkl'
 
         # Load labels and data locations
         self.train_data = []
@@ -40,8 +42,8 @@ class Train:
         # Train Test Split
         self.train_test_split = train_test_split
         
-        self.classes = [0, 1]
-        self.label_dict = {'available': 0, 'unavailable': 1}
+        self.classes = [0, 1, 2]
+        self.label_dict = {'tracer': 0, 'ashe': 1, 'none': 2}
 
         # Load Data
         self.load_data()
@@ -65,10 +67,18 @@ class Train:
         # Train Model
         self.train()
 
-    def apply_transformation(self, img):
-        # Space for other transformations
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
+
+    def apply_transformation(self, img):
+        # Drop Alpha Channel
+        img = img[:, :, :3]
+        # Get Center third of image
+        img = img[round(img.shape[0]/3):round(img.shape[0]*2/3), round(img.shape[1]/3):round(img.shape[1]*2/3)]
+        # Convert to Grayscale
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # cv2.imshow('img', img)
+        # cv2.waitKey(0)
+        # Resize
         img = img.reshape(-1)
         return img
 
@@ -133,15 +143,15 @@ class Train:
         print(f'Data Shape: {np.array(self.train_data_read).shape}')
         print(f'Labels Shape: {np.array(self.train_labels).shape}')
         print(self.train_labels[:10])
-        # # Logistic Regression
-        self.model = LogisticRegression(solver='lbfgs', multi_class='multinomial', max_iter=1500, verbose=1)
+        # MLP Classifier
+        self.model = MLPClassifier(max_iter=7, verbose=1, activation='relu', learning_rate_init=0.01) # Will change learning_rate_init to 0.001 later
         # Fit Data
         self.model.fit(self.train_data_read, self.train_labels)
         # Save model
         self.save_model()
         # Print Accuracy
         plot_confusion_matrix(self.model, self.test_data_read, self.test_labels)
-        plt.show()
+        pyplot.show()
         self.test(self.model, self.test_data_read, self.test_labels)
 
     def test(self, model, test_x_final, test_y_final):
@@ -152,7 +162,7 @@ class Train:
             if pred == gt: correct += 1
             else: incorrect += 1
         print(f"Correct: {correct}, Incorrect: {incorrect}, % Correct: {correct/(correct + incorrect): 5.2}")
-        plt.show()
+        pyplot.show()
     
     def save_model(self):
         pickle.dump(self.model, open(self.model_path, 'wb'))
@@ -162,11 +172,10 @@ class Train:
 
 
 class GatherData:
-    def __init__(self, save_folder = f'flashbang_frames/', resolution = (1920, 1080), time_between_frames = 0.05, start_file_number = 0):
-        # Save Location
+    def __init__(self, save_folder = 'data', character_name = 'other', resolution = (1920, 1080), time_between_frames = 0.1, start_file_number = 0):
+        # Member variables
+        self.character_name = character_name
         self.save_folder = save_folder
-        self.file_number = start_file_number
-
         # Resolution
         self.x_res = resolution[0]
         self.y_res = resolution[1]
@@ -174,11 +183,18 @@ class GatherData:
         # Time Between Frames
         self.time_between_frames = time_between_frames
 
-        # Initialize screen capture to ammo location
-        top_left = (round(self.y_res*135/160), round(self.x_res*134/160))
-        width = round(self.x_res*140/160) - top_left[1]
-        height = round(self.y_res*145/160) - top_left[0]
-        self.monitor = {'top': top_left[0], 'left': top_left[1], 'width': width, 'height': height}
+        # BGR Separators for Red
+        self.red_min = 180
+        self.red_max = 255
+        self.green_max = 100
+        self.blue_max = 100
+
+        # Initialize save location
+        self.save_location = self.save_folder + '/' + self.character_name + '/'
+        self.file_number = start_file_number
+
+        # Initialize screen capture
+        self.monitor = {'top': 0, 'left': 0, 'width': self.x_res, 'height': self.y_res}
 
         # Initialize Capture Thread
         self.capture_thread = threading.Thread(target=self.capture_loop).start()
@@ -189,19 +205,16 @@ class GatherData:
             frame = np.array(sct.grab(self.monitor))
         return frame
 
-    def process_frame_for_save(self, image):
-        # Convert to Grayscale
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        # Threshold
-        # image = cv2.threshold(image, self.threshold_low, self.threshold_high, cv2.THRESH_BINARY)[1]
-        # Resize
-        image = cv2.resize(image, (28, 28))
-        # Return
-        return image
+    def process_frame_for_save(self, frame):
+        # Drop Alpha Channel
+        frame = frame[:, :, :3]
+        # Filtered Red Locations
+        frame = cv2.inRange(frame, (0, 0, self.red_min), (self.blue_max, self.green_max, self.red_max))
+        return frame
 
     def save_frame(self, frame):
         # Save Frame
-        cv2.imwrite(f'{self.save_folder}ammo{self.file_number}.png', frame)
+        cv2.imwrite(f'{self.save_location}{self.character_name}{self.file_number}.png', frame)
         self.file_number += 1
 
     # Main Data Capture Loop
@@ -212,8 +225,47 @@ class GatherData:
             # Process Frame
             frame = self.process_frame_for_save(frame)
             # Save Frame
-            # cv2.imshow('frame', frame)
-            # cv2.waitKey(1)
             self.save_frame(frame)
             # Wait
             time.sleep(self.time_between_frames)
+
+
+
+# class CharacterIdentifier:
+#     def __init__(self, model_path):
+#         self.model = self.load_model()
+#         self.label_dict_reverse = {0: 'tracer', 1: 'ashe', 2: 'none'}
+
+#         # Model Path
+#         self.model_path = 'character_identifier.pkl'
+
+#         # BGR Separators for Red
+#         self.red_min = 180
+#         self.red_max = 255
+#         self.green_max = 100
+#         self.blue_max = 100
+
+#         # Downsize Proportion
+#         self.downsize_proportion = 0.3
+
+#     # Apply Transformations before Network Input
+#     def apply_transformation(self, img):
+#         # Drop Alpha Channel
+#         img = img[:, :, :3]
+#         # Filtered Red Locations
+#         img = cv2.inRange(img, (0, 0, self.red_min), (self.blue_max, self.green_max, self.red_max))
+#         # Get Center third of image
+#         img = img[round(img.shape[0]/3):round(img.shape[0]*2/3), round(img.shape[1]/3):round(img.shape[1]*2/3)]
+#         # Resize for Network Input
+#         img = img.reshape(-1)
+#         # Return Processed Image for Network
+#         return img
+
+#     def predict(self, screenshot):
+#         processed_image = self.apply_transformation(screenshot)
+#         return self.label_dict_reverse[self.model.predict(processed_image.reshape(1, -1))[0]]
+
+#     def load_model(self):
+#         with open(self.model_path, 'rb') as f:
+#             model = pickle.load(f)
+#         return model
