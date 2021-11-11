@@ -72,7 +72,7 @@ class Window:
     #         cv2.waitKey(self.time_between_frames_ms)
 
 
-
+    # Draws the UI
     def ui_loop(self):
         time.sleep(3)
         while True:
